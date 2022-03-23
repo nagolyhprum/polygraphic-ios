@@ -1,0 +1,41 @@
+{
+  "name": "polygraphic-ios",
+  "version": "0.0.0",
+  "description": "",
+  "main": "dist/index.js",
+  "source": "src/index.ts",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "polygraphic-ios": "bin/polygraphic-ios.js"
+  },
+  "targets": {
+    "types": false,
+    "main": {
+      "context": "node"
+    }
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "node bin/polygraphic-ios.js build ../polygraphic-demo/src/todo/index.ts -o dist/ios",
+    "prepublishOnly": "parcel build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nagolyhprum/polygraphic-ios.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/nagolyhprum/polygraphic-ios/issues"
+  },
+  "homepage": "https://github.com/nagolyhprum/polygraphic-ios#readme",
+  "dependencies": {
+    "parcel": "^2.4.0",
+    "polygraphic": "^0.63.0",
+    "yargs": "^17.4.0"
+  },
+  "devDependencies": {
+    "@parcel/transformer-typescript-types": "^2.4.0",
+    "typescript": "^4.6.2"
+  }
+}
