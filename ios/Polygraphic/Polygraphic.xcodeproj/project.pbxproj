@@ -11,8 +11,6 @@
 		88ED58A727EBCDF200362DE7 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88ED58A627EBCDF200362DE7 /* ContentView.swift */; };
 		88ED58A927EBCDF400362DE7 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 88ED58A827EBCDF400362DE7 /* Assets.xcassets */; };
 		88ED58AC27EBCDF400362DE7 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 88ED58AB27EBCDF400362DE7 /* Preview Assets.xcassets */; };
-		88ED58AE27EBCDF400362DE7 /* Persistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88ED58AD27EBCDF400362DE7 /* Persistence.swift */; };
-		88ED58B127EBCDF400362DE7 /* Polygraphic.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = 88ED58AF27EBCDF400362DE7 /* Polygraphic.xcdatamodeld */; };
 		88ED58BC27EBCDF400362DE7 /* PolygraphicTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88ED58BB27EBCDF400362DE7 /* PolygraphicTests.swift */; };
 		88ED58C727EBCDF400362DE7 /* PolygraphicUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88ED58C627EBCDF400362DE7 /* PolygraphicUITests.swift */; };
 /* End PBXBuildFile section */
@@ -40,8 +38,6 @@
 		88ED58A627EBCDF200362DE7 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		88ED58A827EBCDF400362DE7 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		88ED58AB27EBCDF400362DE7 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
-		88ED58AD27EBCDF400362DE7 /* Persistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Persistence.swift; sourceTree = "<group>"; };
-		88ED58B027EBCDF400362DE7 /* Polygraphic.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = Polygraphic.xcdatamodel; sourceTree = "<group>"; };
 		88ED58B227EBCDF400362DE7 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		88ED58B727EBCDF400362DE7 /* PolygraphicTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PolygraphicTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		88ED58BB27EBCDF400362DE7 /* PolygraphicTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PolygraphicTests.swift; sourceTree = "<group>"; };
@@ -102,9 +98,7 @@
 				88ED58A427EBCDF200362DE7 /* PolygraphicApp.swift */,
 				88ED58A627EBCDF200362DE7 /* ContentView.swift */,
 				88ED58A827EBCDF400362DE7 /* Assets.xcassets */,
-				88ED58AD27EBCDF400362DE7 /* Persistence.swift */,
 				88ED58B227EBCDF400362DE7 /* Info.plist */,
-				88ED58AF27EBCDF400362DE7 /* Polygraphic.xcdatamodeld */,
 				88ED58AA27EBCDF400362DE7 /* Preview Content */,
 			);
 			path = Polygraphic;
@@ -265,9 +259,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				88ED58AE27EBCDF400362DE7 /* Persistence.swift in Sources */,
 				88ED58A727EBCDF200362DE7 /* ContentView.swift in Sources */,
-				88ED58B127EBCDF400362DE7 /* Polygraphic.xcdatamodeld in Sources */,
 				88ED58A527EBCDF200362DE7 /* PolygraphicApp.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -588,19 +580,6 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
-
-/* Begin XCVersionGroup section */
-		88ED58AF27EBCDF400362DE7 /* Polygraphic.xcdatamodeld */ = {
-			isa = XCVersionGroup;
-			children = (
-				88ED58B027EBCDF400362DE7 /* Polygraphic.xcdatamodel */,
-			);
-			currentVersion = 88ED58B027EBCDF400362DE7 /* Polygraphic.xcdatamodel */;
-			path = Polygraphic.xcdatamodeld;
-			sourceTree = "<group>";
-			versionGroupType = wrapper.xcdatamodel;
-		};
-/* End XCVersionGroup section */
 	};
 	rootObject = 88ED589927EBCDF200362DE7 /* Project object */;
 }

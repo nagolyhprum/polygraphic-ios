@@ -1,10 +1,3 @@
-//
-//  PolygraphicUITests.swift
-//  PolygraphicUITests
-//
-//  Created by Logan Murphy on 3/23/22.
-//
-
 import XCTest
 
 class PolygraphicUITests: XCTestCase {

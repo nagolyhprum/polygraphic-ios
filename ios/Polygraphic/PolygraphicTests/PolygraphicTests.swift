@@ -1,10 +1,3 @@
-//
-//  PolygraphicTests.swift
-//  PolygraphicTests
-//
-//  Created by Logan Murphy on 3/23/22.
-//
-
 import XCTest
 @testable import Polygraphic
 
