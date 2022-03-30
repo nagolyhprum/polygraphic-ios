@@ -154,26 +154,38 @@ ${tabs}}` : ""}${props}`
 }
 
 
-const getTag = (name : Tag) : (config : {
-    id : string
-    content : string
-    props : string
-    tabs : string
-}) => string => {
+const getTag = (
+    name : Tag, 
+    config : {
+        id : string
+        content : string
+        props : string
+        tabs : string
+        dependencies : Set<string>
+        component : Component<any, any>
+    }
+) : string => {
+    const { component } = config
     switch(name) {
-        case "button": return stdTag("Button")
-        case "checkbox": return stdTag("CheckboxField")
-        case "column": return stdTag("VStack")
-        case "date": return stdTag("ZStack")
-        case "image": return stdTag("Image(\"\")")
-        case "input": return stdTag("TextField")
-        case "option": return stdTag("Text")
-        case "root": return stdTag("ZStack")
-        case "row": return stdTag("HStack")
-        case "scrollable": return stdTag("ScrollView")
-        case "select": return stdTag("Picker")
-        case "stack": return stdTag("ZStack")
-        case "text": return stdTag("Text(\"\")")
+        case "button": return stdTag(`Button(action : {
+${config.tabs}}, label : {
+${config.content}
+${config.tabs}})`)({
+            ...config,
+            content: ""
+        })
+        case "checkbox": return stdTag("CheckboxField(component : component, callback : { value in })")(config)
+        case "column": return stdTag("VStack")(config)
+        case "date": return stdTag("ZStack")(config)
+        case "image": return stdTag("Image(\"\")")(config)
+        case "input": return stdTag("TextField(\"\", text : $text)")(config)
+        case "root": return stdTag("ZStack")(config)
+        case "row": return stdTag("HStack")(config)
+        case "scrollable": return stdTag("ScrollView")(config)
+        case "select": return stdTag("Picker(\"\", selection : $selection)")(config)
+        case "stack": return stdTag("ZStack")(config)
+        case "option": 
+        case "text": return stdTag(`Text(${config.dependencies.has("event.text") ? "component[\"text\"] as? String ?? \"\"" : `"${component.text}"`})`)(config)
     }
 }
 
@@ -193,7 +205,8 @@ const render = <Global extends GlobalState>(
     global : any,
     local : any,
     config : IOSConfig
-) => {
+) : string => {
+    const dependencies = new Set<string>([])
     const children = (component.children || []).map(child => {
         if(child.id) {
             inject({
@@ -206,7 +219,7 @@ const render = <Global extends GlobalState>(
                     isRoot : true
                 })
             })            
-            return `${config.tabs}\t${child.id}()`
+            return `${config.tabs}\t\t${child.id}()`
         } else {
             return render(child, global, local, {
                 ...config,
@@ -215,16 +228,16 @@ const render = <Global extends GlobalState>(
             })
         }
     }).join(`\n`)
-    const adapters = component.adapters ? `${config.tabs}\tif let data = component["data"] as? [Any?] {
-${config.tabs}\t\tlet identifiables = data.map {
-${config.tabs}\t\t\treturn IdentifiableMap(any : $0)
-${config.tabs}\t\t}
-${config.tabs}\t\tForEach(identifiables) { idmap in
-${config.tabs}\t\t\tlet index = Double(identifiables.firstIndex(where : { item in
-${config.tabs}\t\t\t\treturn idmap.id == item.id
-${config.tabs}\t\t\t}) ?? -1)
-${config.tabs}\t\t\tlet adapter = idmap.map["adapter"] as? String ?? "adapter"
-${config.tabs}\t\t\t${Object.keys(component.adapters).map(key => {
+    const adapters = component.adapters ? `${config.tabs}\t\tif let data = component["data"] as? [Any?] {
+${config.tabs}\t\t\tlet identifiables = data.map {
+${config.tabs}\t\t\t\treturn IdentifiableMap(any : $0)
+${config.tabs}\t\t\t}
+${config.tabs}\t\t\tForEach(identifiables) { idmap in
+${config.tabs}\t\t\t\tlet index = Double(identifiables.firstIndex(where : { item in
+${config.tabs}\t\t\t\t\treturn idmap.id == item.id
+${config.tabs}\t\t\t\t}) ?? -1)
+${config.tabs}\t\t\t\tlet adapter = idmap.map["adapter"] as? String ?? "adapter"
+${config.tabs}\t\t\t\t${Object.keys(component.adapters).map(key => {
         const instance = component.adapters[key]({
             global,
             local,
@@ -247,38 +260,46 @@ ${config.tabs}\t\t\t${Object.keys(component.adapters).map(key => {
         })
         return `if adapter == ${JSON.stringify(key)} { ${instance.id}() }`
     }).join(`\n\t\t\t${config.tabs}`)}
-${config.tabs}\t\t}
-${config.tabs}\t}` : ""
-
+${config.tabs}\t\t\t}
+${config.tabs}\t\t}` : ""
     const content = [
         children,
         adapters
     ].filter(_ => _).join(`\n`)
+    const observe = toSwift(component.observe, dependencies, "\t\t")
+    dependencies.forEach(dependency => {
+        config.dependencies.add(dependency)
+    })
+    const tag = getTag(component.name, {
+        id : component.id,
+        content,
+        props : "",
+        tabs : config.tabs + "\t",
+        dependencies,
+        component
+    })
     if(component.name === "root" || config.isRoot) {
         return `
 struct ${component.id}: View {${
 component.observe ? `
     func observe() -> [String : Any?] {
         var event : Any? = [:]
-${toSwift(component.observe, config.dependencies, "\t\t")}
+${observe}
         return event as! [String : Any?]
     }` : ""
+}${
+    component.name === "input" ? "\n\t@State private var text : String = \"\"" : ""
+}${
+    component.name === "select" ? "\n\t@State private var selection : String = \"\"" : ""
 }
     var body: some View {${
     component.observe ? "\n\t\tlet component : [String : Any?] = [:]" : ""
 }
         ZStack {
-${content}
+${tag}
         }
     }
 }`
     }
-    const tag = getTag(component.name)
-
-    return tag({
-        id : component.id,
-        content,
-        props : "",
-        tabs : config.tabs
-    })
+    return tag
 }
