@@ -10,7 +10,8 @@ import {
     ComponentFromConfig,
     MATCH,
     Tag,
-    swiftBundle
+    swiftBundle,
+    swift
 } from "polygraphic"
 import { IOSConfig } from './types';
 
@@ -176,6 +177,16 @@ const getTag = (name : Tag) : (config : {
     }
 }
 
+const toSwift = (
+    code : Array<(event : any) => void>,
+    dependencies : Set<string>,
+    tabs : string
+) : string => {
+    return (code || []).map(item => {
+        const generated = compile(item as () => any, dependencies)
+        return swift(generated, tabs)
+    }).join("\n")
+}
 
 const render = <Global extends GlobalState>(
     component : Component<Global, Global>, 
@@ -245,9 +256,17 @@ ${config.tabs}\t}` : ""
     ].filter(_ => _).join(`\n`)
     if(component.name === "root" || config.isRoot) {
         return `
-struct ${component.id}: View {
-    var body: some View {
-        let component : [String : Any?] = [:]
+struct ${component.id}: View {${
+component.observe ? `
+    func observe() -> [String : Any?] {
+        var event : Any? = [:]
+${toSwift(component.observe, config.dependencies, "\t\t")}
+        return event as! [String : Any?]
+    }` : ""
+}
+    var body: some View {${
+    component.observe ? "\n\t\tlet component : [String : Any?] = [:]" : ""
+}
         ZStack {
 ${content}
         }

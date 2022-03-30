@@ -1,5 +1,8 @@
 import SwiftUI
 
+var global : Any? = [:]
+var local : Any? = [:]
+
 var last_update = Double(0)
 func isReady() -> Bool {
     let now = Double(Date().timeIntervalSince1970)
