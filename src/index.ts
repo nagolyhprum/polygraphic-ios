@@ -115,7 +115,7 @@ export const ios = <Global extends GlobalState>(
     inject({
         files : config.files,
         name : "ContentView.swift",
-        content : "\t\t\tmain()",
+        content : `\t\t\tmain(state : $state, local : state)`,
         template : "main"
     })
 
@@ -167,6 +167,7 @@ const getTag = (
     switch(name) {
         case "button": return stdTag(`Button(action : {
 ${toSwift(component.onClick, config.dependencies, `${config.tabs}\t`)}
+${config.tabs}\tstate = global
 ${config.tabs}}, label : {
 ${config.content}
 ${config.tabs}})`)({
@@ -180,6 +181,7 @@ ${config.tabs}})`)({
         case "input": return stdTag(`TextField(\"${component.placeholder || ""}\", text : value${
 	component.onEnter ? `, onEditingChanged : { _ in }, onCommit : {
 ${toSwift(component.onEnter, config.dependencies, `${config.tabs}\t`)}
+${config.tabs}\tstate = global
 ${config.tabs}})` : ")"}`)(config)
         case "root": return stdTag("ZStack")(config)
         case "row": return stdTag("HStack")(config)
@@ -221,7 +223,7 @@ const render = <Global extends GlobalState>(
                     isRoot : true
                 })
             })            
-            return `${config.tabs}\t\t${child.id}()`
+            return `${config.tabs}\t\t${child.id}(state : $state, local : local)`
         } else {
             return render(child, global, local, {
                 ...config,
@@ -260,7 +262,7 @@ ${config.tabs}\t\t\t\t${Object.keys(component.adapters).map(key => {
                 isRoot: true
             })
         })
-        return `if adapter == ${JSON.stringify(key)} { ${instance.id}() }`
+        return `if adapter == ${JSON.stringify(key)} { ${instance.id}(state : $state, local : idmap.map) }`
     }).join(`\n\t\t\t\t${config.tabs}`)}
 ${config.tabs}\t\t\t}
 ${config.tabs}\t\t}` : ""
@@ -291,27 +293,32 @@ ${config.tabs}\t\t}` : ""
     })
     if(component.name === "root" || config.isRoot) {
         return `
-struct ${component.id}: View {${
+struct ${component.id}: View {
+	@Binding var state : Any?
+	var local : Any?${
 component.observe ? `
     func observe() -> [String : Any?] {
+		let global = state
         var event : Any? = [:]
 ${observe}
         return event as! [String : Any?]
     }` : ""
 }
     var body: some View {${
-    component.observe ? "\n\t\tlet component : [String : Any?] = [:]" : ""
+    component.observe ? "\n\t\tlet component : [String : Any?] = observe()" : ""
 }${
     component.name === "checkbox" ? `\n\t\tlet value = Binding<Bool>(get : {
 			return component["value"] as? Bool ?? false
 		}, set : { event in
 ${toSwift(component.onChange, config.dependencies, "\t\t\t")}
+			state = global
 		})` : ""
 }${
     ["input", "select"].includes(component.name) ? `\n\t\tlet value = Binding<String>(get : {
 			return component["value"] as? String ?? ""
 		}, set : { event in
 ${toSwift(component.onChange, config.dependencies, "\t\t\t")}
+			state = global
 		})` : ""
 }
         ZStack {
@@ -450,7 +457,17 @@ ${config.tabs})`;
 	case "onInit": {
 		return `.onAppear {
 ${toSwift(component[key], dependencies, config.tabs + "\t")}
+${config.tabs}\tstate = global
 ${config.tabs}}`;
+	}
+	case "funcs": {
+		inject({
+			files : config.files,
+			name : "ContentView.swift",
+			content : toSwift(component.funcs.map(it => () => it), dependencies, config.tabs),
+			template : "funcs"
+		})
+		return ""
 	}
 	}
 	return "";

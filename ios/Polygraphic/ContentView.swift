@@ -1,7 +1,6 @@
 import SwiftUI
 
 var global : Any? = [:]
-var local : Any? = [:]
 
 var last_update = Double(0)
 func isReady() -> Bool {
@@ -13,8 +12,6 @@ func isReady() -> Bool {
     }
     return false
 }
-
-
 
 struct CheckboxField: View {
     @Binding var checked : Bool
@@ -30,6 +27,10 @@ struct CheckboxField: View {
 }
 
 struct ContentView: View {
+    init() {
+        /*=funcs*/
+    }
+    @State var state = global
     var body: some View {
         ZStack {
             /*=main*/
