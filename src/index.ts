@@ -100,6 +100,12 @@ export const ios = <Global extends GlobalState>(
 	};
 	const generated = compile(generateState as unknown as (config : any) => ProgrammingLanguage, config.dependencies);
 	const state = execute(generated, {}) as Global;
+	inject({
+		files: config.files,
+		name:"ContentView.swift",
+		content:`var global : Any? = ${toSwift([() => generated], config.dependencies, "")}`,
+		template: "views"
+	})
 	state.features = [];
     const root = app({
         global : state,
@@ -186,10 +192,25 @@ ${config.tabs}})` : ")"}`)(config)
         case "root": return stdTag("ZStack")(config)
         case "row": return stdTag("HStack")(config)
         case "scrollable": return stdTag("ScrollView")(config)
-        case "select": return stdTag("Picker(\"\", selection : value)")(config)
+        case "select": 
+			return `${config.tabs}Picker(
+${config.tabs}\ttitle : "${component.placeholder || ""}",
+${config.tabs}\tcomponent : component,
+${config.tabs}\tcallback : { event in 
+${toSwift(component.onChange, config.dependencies, `${config.tabs}\t\t`)}
+${config.tabs}\t\tstate = global
+${config.tabs}\t},
+${config.tabs}\tcolor : Color(hex : "${transformColor(component.color)}")
+${config.tabs})`;
         case "stack": return stdTag("ZStack")(config)
         case "option": 
-        case "text": return stdTag(`Text(${config.dependencies.has("event.text") ? "component[\"text\"] as? String ?? \"\"" : `"${component.text}"`})`)(config)
+        case "text": return stdTag(`Text(${
+			config.dependencies.has("event.text") ? 
+			"component[\"text\"] as? String ?? \"\"" : 
+			config.dependencies.has("event.markdown") ? 
+			"component[\"markdown\"] as? String ?? \"\"" : 
+			`"${component.text}"`
+		})`)(config)
     }
 }
 

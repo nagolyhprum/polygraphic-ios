@@ -1,7 +1,5 @@
 import SwiftUI
 
-var global : Any? = [:]
-
 var last_update = Double(0)
 func isReady() -> Bool {
     let now = Double(Date().timeIntervalSince1970)
@@ -34,6 +32,122 @@ struct ContentView: View {
     var body: some View {
         ZStack {
             /*=main*/
+        }
+    }
+}
+
+extension View {
+    public func blending(color: Color) -> some View {
+        modifier(ColorBlended(color: color))
+    }
+    
+    public func position(position : Any?) -> some View {
+        let position = position as? [String:Any?] ?? [:]
+        let top = position["top"] as? Double ?? 0
+        let trailing = position["right"] as? Double ?? 0
+        let bottom = position["bottom"] as? Double ?? 0
+        let leading = position["left"] as? Double ?? 0
+        return padding(.top, CGFloat(top))
+            .padding(.trailing, CGFloat(trailing))
+            .padding(.bottom, CGFloat(bottom))
+            .padding(.leading, CGFloat(leading))
+    }
+}
+
+func getName(input : [String : Any?]?) -> String {
+    return (input?["name"] ?? input?["title"] ?? input?["text"]) as? String ?? ""
+}
+
+func getIdentifier(input : [String : Any?]?) -> String {
+    return (input?["key"] ?? input?["id"]) as? String ?? ""
+}
+
+struct Picker: View {
+    
+    let title: String
+    let component : [String : Any?]
+    let callback: ([String : Any?]) -> ()
+    let color: Color
+    @State var popup = false
+    
+    init(
+        title: String, 
+        component : [String : Any?], 
+        callback : @escaping ([String : Any?]) -> (),
+        color: Color
+    ) {
+        self.title = title
+        self.component = component
+        self.callback = callback
+        self.color = color
+    }
+    
+    @ViewBuilder
+    var body: some View {
+        if let data = component["data"] as? [Any?] {
+            let identifiables = data.map {
+                return IdentifiableMap(any : $0)
+            }
+            let idmap = Array(identifiables).first(where: { item in
+                let a = getIdentifier(input : component)
+                let b = getIdentifier(input : item.map)
+                return a == b
+            })
+            Button(action : {
+                if !isReady() { return }
+                popup = true
+            }) {
+                HStack {
+                    Text(getName(input : idmap?.map))
+                    .frame(maxWidth : .infinity, alignment: .leading)
+                    Image("drop_down_arrow")
+                    .blending(color : color)
+                    .frame(maxWidth: 24, maxHeight: 24)
+                }
+            }.sheet(isPresented: self.$popup) {
+                VStack {
+                    Text(title)
+                    .foregroundColor(Color("polly_black"))
+                    .font(.system(size : 20, weight : .bold))
+                    .padding()
+                    ScrollView {
+                        VStack {
+                            ForEach(identifiables) { inner_idmap in
+                                Button(action : {
+                                    if !isReady() { return }
+                                    callback([
+                                        "value" : getIdentifier(input : inner_idmap.map)
+                                    ])
+                                    popup = false
+                                }) {
+                                    let a = getIdentifier(input : inner_idmap.map)
+                                    let b = getIdentifier(input : idmap?.map)
+                                    let weight = a == b ? Font.Weight.bold : Font.Weight.regular
+                                    let color = a == b ? Color("polly_black") : Color.gray
+                                    Text(getName(input : inner_idmap.map))
+                                    .foregroundColor(color)
+                                    .font(.system(size : 16, weight : weight))
+                                    .padding()
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+public struct ColorBlended: ViewModifier {
+    fileprivate var color: Color
+
+    public func body(content: Content) -> some View {
+        VStack {
+            ZStack {
+                content
+                color.blendMode(.sourceAtop)
+            }
+            .drawingGroup(opaque: false)
         }
     }
 }
@@ -82,16 +196,10 @@ class IdentifiableMap : Identifiable {
     
     init(any : Any?) {
         if let map = any as? [String : Any?] {
-            if let id = map["key"] as? String {
-                self.map = map
-                self.id = id
-                return
-            }
-            if let id = map["id"] as? String {
-                self.map = map
-                self.id = id
-                return
-            }
+            let id = getIdentifier(input : map)
+            self.map = map
+            self.id = id
+            return
         }
         map = [:]
         id = ""
