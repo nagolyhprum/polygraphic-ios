@@ -201,7 +201,7 @@ ${toSwift(component.onChange, config.dependencies, `${config.tabs}\t\t`)}
 ${config.tabs}\t\tstate = global
 ${config.tabs}\t},
 ${config.tabs}\tcolor : Color(hex : "${transformColor(component.color)}")
-${config.tabs})`;
+${config.tabs})${config.props}`;
         case "stack": return stdTag("ZStack")(config)
         case "option": 
         case "text": return stdTag(`Text(${

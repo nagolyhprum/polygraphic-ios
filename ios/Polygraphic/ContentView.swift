@@ -59,21 +59,21 @@ func getName(input : [String : Any?]?) -> String {
 }
 
 func getIdentifier(input : [String : Any?]?) -> String {
-    return (input?["key"] ?? input?["id"]) as? String ?? ""
+    return (input?["key"] ?? input?["id"] ?? input?["value"]) as? String ?? ""
 }
 
 struct Picker: View {
     
     let title: String
     let component : [String : Any?]
-    let callback: ([String : Any?]) -> ()
+    let callback: (String) -> ()
     let color: Color
     @State var popup = false
     
     init(
         title: String, 
         component : [String : Any?], 
-        callback : @escaping ([String : Any?]) -> (),
+        callback : @escaping (String) -> (),
         color: Color
     ) {
         self.title = title
@@ -107,7 +107,7 @@ struct Picker: View {
             }.sheet(isPresented: self.$popup) {
                 VStack {
                     Text(title)
-                    .foregroundColor(Color("polly_black"))
+                    .foregroundColor(Color.black)
                     .font(.system(size : 20, weight : .bold))
                     .padding()
                     ScrollView {
@@ -115,15 +115,13 @@ struct Picker: View {
                             ForEach(identifiables) { inner_idmap in
                                 Button(action : {
                                     if !isReady() { return }
-                                    callback([
-                                        "value" : getIdentifier(input : inner_idmap.map)
-                                    ])
+                                    callback(getIdentifier(input : inner_idmap.map))
                                     popup = false
                                 }) {
                                     let a = getIdentifier(input : inner_idmap.map)
                                     let b = getIdentifier(input : idmap?.map)
                                     let weight = a == b ? Font.Weight.bold : Font.Weight.regular
-                                    let color = a == b ? Color("polly_black") : Color.gray
+                                    let color = a == b ? Color.black : Color.gray
                                     Text(getName(input : inner_idmap.map))
                                     .foregroundColor(color)
                                     .font(.system(size : 16, weight : weight))
