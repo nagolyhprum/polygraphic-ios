@@ -136,7 +136,7 @@ export const ios = <Global extends GlobalState>(
         template: "views",
         files : config.files,
         name : "ContentView.swift",
-        content : render(root, global, global, {
+        content : await render(root, global, global, {
             ...config,
             isRoot: true
         })
@@ -181,16 +181,24 @@ ${config.tabs}})`)({
             content: ""
         })
         case "checkbox": return stdTag(`CheckboxField(checked : value)`)(config)
-        case "column": return stdTag("VStack")(config)
+        case "column": return stdTag(`VStack(alignment: .${getCrossAxisAlignment(component)}, spacing: 0)`)(config)
         case "date": return stdTag("ZStack")(config)
-        case "image": return stdTag("Image(\"\")")(config)
+        case "image": {
+			const {src} = component;
+			const observedSrc = config.dependencies.has("event.src") ? "getSource(input : component[\"src\"]) ?? " : "";
+			const observedAlt = config.dependencies.has("event.alt") ? "component[\"alt\"] as? String ?? " : "";
+			const name = src.slice(src.lastIndexOf(path.sep) + 1, src.indexOf("."))
+			return `${config.tabs}Image(${observedSrc}"${name}", label : Text(${observedAlt}"${component.alt ?? ""}"))
+${config.tabs}.resizable()
+${config.tabs}.scaledToFit()`;
+		}
         case "input": return stdTag(`TextField(\"${component.placeholder || ""}\", text : value${
 	component.onEnter ? `, onEditingChanged : { _ in }, onCommit : {
 ${toSwift(component.onEnter, config.dependencies, `${config.tabs}\t`)}
 ${config.tabs}\tstate = global
 ${config.tabs}})` : ")"}`)(config)
         case "root": return stdTag("ZStack")(config)
-        case "row": return stdTag("HStack")(config)
+        case "row": return stdTag(`HStack(alignment: .${getCrossAxisAlignment(component)}, spacing: 0)`)(config)
         case "scrollable": return stdTag("ScrollView")(config)
         case "select": 
 			return `${config.tabs}Picker(
@@ -214,6 +222,42 @@ ${config.tabs})${config.props}`;
     }
 }
 
+const handleImage = async (src: string, config: IOSConfig) : Promise<void> => {
+	const name = src.slice(src.lastIndexOf("/") + 1, src.indexOf("."));
+	const dir = path.join("ios", "Polygraphic", "Assets.xcassets", `${name}.imageset`);
+	const file = await fs.readFile(src.slice(src.indexOf(":") + 1), "utf-8");
+
+	config.files[path.join(dir, "Contents.json")] = JSON.stringify(generateContentsFiles(name), null, "\t");
+
+	[1, 2, 3].forEach((number) => {
+		config.files[path.join(dir, `${name}-${number}.svg`)] = file
+	});
+};
+
+const generateContentsFiles = (name : string) => ({
+	"images" : [
+		{
+			"filename" : `${name}-1.svg`,
+			"idiom" : "universal",
+			"scale" : "1x"
+		},
+		{
+			"filename" : `${name}-2.svg`,
+			"idiom" : "universal",
+			"scale" : "2x"
+		},
+		{
+			"filename" : `${name}-3.svg`,
+			"idiom" : "universal",
+			"scale" : "3x"
+		}
+	],
+	"info" : {
+		"author" : "xcode",
+		"version" : 1
+	}
+});
+
 const toSwift = (
     code : Array<(event : any) => void>,
     dependencies : Set<string>,
@@ -225,25 +269,28 @@ const toSwift = (
     }).join("\n")
 }
 
-const render = <Global extends GlobalState>(
+const render = async <Global extends GlobalState>(
     component : Component<Global, Global>, 
     global : any,
     local : any,
     config : IOSConfig
-) : string => {
+) : Promise<string> => {
+	if(component.src) {
+		await handleImage(component.src, config)
+	}
     const dependencies = new Set<string>([])
-    const children = (component.children || []).map(child => {
+    const children = (await Promise.all((component.children || []).map(async child => {
         if(child.id) {
             inject({
                 template: "views",
                 files : config.files,
                 name : "ContentView.swift",
-                content : render(child, global, local, {
+                content : await render(child, global, local, {
                     ...config,
                     tabs : "\t\t",
                     isRoot : true
                 })
-            })            
+            })
             return `${config.tabs}\t\t${child.id}(state : $state, local : local)`
         } else {
             return render(child, global, local, {
@@ -252,7 +299,7 @@ const render = <Global extends GlobalState>(
                 isRoot : false
             })
         }
-    }).join(`\n`)
+    }))).join(`\n`)
     const adapters = component.adapters ? `${config.tabs}\t\tif let data = component["data"] as? [Any?] {
 ${config.tabs}\t\t\tlet identifiables = data.map {
 ${config.tabs}\t\t\t\treturn IdentifiableMap(any : $0)
@@ -262,7 +309,7 @@ ${config.tabs}\t\t\t\tlet index = Double(identifiables.firstIndex(where : { item
 ${config.tabs}\t\t\t\t\treturn idmap.id == item.id
 ${config.tabs}\t\t\t\t}) ?? -1)
 ${config.tabs}\t\t\t\tlet adapter = idmap.map["adapter"] as? String ?? "adapter"
-${config.tabs}\t\t\t\t${Object.keys(component.adapters).map(key => {
+${config.tabs}\t\t\t\t${(await Promise.all(Object.keys(component.adapters).map(async key => {
         const instance = component.adapters[key]({
             global,
             local,
@@ -277,20 +324,21 @@ ${config.tabs}\t\t\t\t${Object.keys(component.adapters).map(key => {
             template: "views",
             files : config.files,
             name : "ContentView.swift",
-            content : render(instance, global, local, {
+            content : await render(instance, global, local, {
                 ...config,
                 tabs : "\t\t",
                 isRoot: true
             })
         })
         return `if adapter == ${JSON.stringify(key)} { ${instance.id}(state : $state, local : idmap.map) }`
-    }).join(`\n\t\t\t\t${config.tabs}`)}
+    }))).join(`\n\t\t\t\t${config.tabs}`)}
 ${config.tabs}\t\t\t}
 ${config.tabs}\t\t}` : ""
     const content = [
         children,
         adapters
     ].filter(_ => _).join(`\n`)
+    const observe = toSwift(component.observe, dependencies, "\t\t")
     const props = keys(component).map(key => getComponentProp(
         component,
         key,
@@ -299,8 +347,7 @@ ${config.tabs}\t\t}` : ""
             ...config,
             tabs : config.tabs + "\t"
         }
-    )).filter(_ => _).join(`\n\t${config.tabs}`)
-    const observe = toSwift(component.observe, dependencies, "\t\t")
+    )).filter(_ => _).join(`\n\t${config.tabs}`) + handleDependencies(dependencies, config);
     dependencies.forEach(dependency => {
         config.dependencies.add(dependency)
     })
@@ -342,14 +389,40 @@ ${toSwift(component.onChange, config.dependencies, "\t\t\t")}
 			state = global
 		})` : ""
 }
-        ZStack {
-${tag}
-        }
+${handlePosition(component, tag, dependencies, config)}.border(Color.red)
     }
 }`
     }
     return tag
 }
+
+const handlePosition = (component: Component<any, any>, child: string, dependencies : Set<string>, config: IOSConfig): string => {
+	if(component.position) {
+		const position = component.position;
+		const observedAlignment = dependencies.has("event.position") ? "getAlignment(position : component[\"position\"]) ?? " : "";
+		const observedPosition = dependencies.has("event.position") ? "component[\"position\"] ?? " : "";
+		const coord = keys(position);
+		const v = coord.includes("top") ? "top" : coord.includes("bottom") ? "bottom" : "top";
+		const h = coord.includes("left") ? "leading" : coord.includes("right") ? "trailing" : "leading";
+		const alignment = `${v}${h[0].toUpperCase()}${h.slice(1)}`;
+		const padding = `\n${config.tabs}.position(position : ${observedPosition}[
+${config.tabs}\t"top" : Double(${position.top ?? 0}),
+${config.tabs}\t"right" : Double(${position.right ?? 0}),
+${config.tabs}\t"bottom" : Double(${position.bottom ?? 0}),
+${config.tabs}\t"left" : Double(${position.left ?? 0}),
+${config.tabs}])`;
+		return `ZStack(alignment : ${observedAlignment}.${alignment}) {
+${child}${padding}
+}.frame(
+	maxWidth: .infinity,
+	maxHeight: .infinity,
+	alignment: ${observedAlignment}.${alignment}
+)`;
+	}
+	return `ZStack {
+${child}
+}`;
+};
 
 const handleDependencies = (
 	dependencies : Set<string>,
@@ -357,11 +430,11 @@ const handleDependencies = (
 ): string => {
 	return Array.from(dependencies).map(dependency => {
 		switch(dependency) {
-		case "component.disabled":
+		case "event.disabled":
 			return ".disabled(hasValue(input : component[\"disabled\"]))";
-		case "component.visible":
+		case "event.visible":
 			return ".isVisible(hasValue(input : component[\"visible\"]))";
-		case "component.color":
+		case "event.color":
 			return ".foregroundColor(Color(hex : component[\"color\"] as? String ?? \"#000\"))";
 		}
 		return "";
@@ -376,8 +449,6 @@ const getComponentProp = (
 	config: IOSConfig
 ): string => {
 	switch(key) {
-	case "dependencies":
-		return handleDependencies(dependencies, config);
 	case "margin": {
 		const margin = component[key];
 		if(margin) {
@@ -421,7 +492,7 @@ ${config.tabs}	minWidth : ${observedMinWidth}${getMinSize(component, "width")},
 ${config.tabs}	maxWidth : ${observedMaxWidth}${getMaxSize(component, "width")}, 
 ${config.tabs}	minHeight : ${observedMinHeight}${getMinSize(component, "height")},
 ${config.tabs}	maxHeight : ${observedMaxHeight}${getMaxSize(component, "height")},
-${config.tabs}	alignment : .${getAlignment(component)}
+${config.tabs}	alignment : .${getMainAxisAlignment(component)}
 ${config.tabs})`;
 		}
 		return "";
@@ -510,7 +581,7 @@ const getMaxSize = (component : Component<any, any>, dimension : "width" | "heig
 	if(value === undefined || value === null || value === WRAP) {
 		return "nil";
 	}
-	return `${value}`;
+	return `${value / 2}`;
 };
 
 const getMinSize = (component : Component<any, any>, dimension : "width" | "height"): string => {
@@ -520,28 +591,46 @@ const getMinSize = (component : Component<any, any>, dimension : "width" | "heig
 			return "0";
 		}
 		if(value >= 0) {
-			return `${value}`;
+			return `${value / 2}`;
 		}
 	}
 	return "0";
 };
 
-
-const getAlignment = (component : Component<any, any>) : string => {
+const getMainAxisAlignment = (component : Component<any, any>) : string => {
 	return {
 		row : {
-			start: "topLeading",
-			center: "leading",
-			end: "bottomLeading"
+			start: "top",
+			center: "center",
+			end: "bottom"
 		},
 		column : {
-			start: "topLeading",
-			center: "top",
-			end: "topTrailing"
+			start: "leading",
+			center: "center",
+			end: "trailing"
 		}
 	}[
 		["column", "row"].includes(component.name) ? component.name : "column"
 	][
 		component.mainAxisAlignment ?? "start" // perpendicular
+	];
+};
+
+const getCrossAxisAlignment = (component : Component<any, any>) : string => {
+	return {
+		row : {
+			start: "top",
+			center: "center",
+			end: "bottom"
+		},
+		column : {
+			start: "leading",
+			center: "center",
+			end: "trailing"
+		}
+	}[
+		["column", "row"].includes(component.name) ? component.name : "column"
+	][
+		component.crossAxisAlignment ?? "start" // perpendicular
 	];
 };

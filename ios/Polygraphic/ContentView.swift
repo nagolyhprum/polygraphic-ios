@@ -37,6 +37,12 @@ struct ContentView: View {
 }
 
 extension View {
+    @ViewBuilder func isVisible(_ visible: Bool) -> some View {
+        if visible {
+            self
+        }
+    }
+
     public func blending(color: Color) -> some View {
         modifier(ColorBlended(color: color))
     }
