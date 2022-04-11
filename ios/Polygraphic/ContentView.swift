@@ -32,6 +32,20 @@ struct ContentView: View {
     var body: some View {
         ZStack {
             /*=main*/
+        }.onAppear {
+            ProgrammingGlobal["onBack"] = { list in
+                /*=onBack*/
+                return false
+            }
+            ProgrammingGlobal["setTimeout"] = { list in
+                if let callback = list[1] as? (Any?) -> Any?, let ms = list[2] as? Double {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + (ms / 1000.0)) {
+                        callback(nil)
+                        state = global
+                    }
+                }
+                return nil
+            }   
         }
     }
 }

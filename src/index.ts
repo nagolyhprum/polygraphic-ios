@@ -338,6 +338,14 @@ ${config.tabs}\t\t}` : ""
         children,
         adapters
     ].filter(_ => _).join(`\n`)
+	if(component.onBack) {
+		inject({
+			files : config.files,
+			name : "ContentView.swift",
+			template : "onBack",
+			content : toSwift(component.onBack, dependencies, "\t\t\t")
+		})
+	}
     const observe = toSwift(component.observe, dependencies, "\t\t")
     const props = keys(component).map(key => getComponentProp(
         component,
