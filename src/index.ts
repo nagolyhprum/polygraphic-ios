@@ -100,6 +100,7 @@ export const ios = <Global extends GlobalState>(
 	};
 	const generated = compile(generateState as unknown as (config : any) => ProgrammingLanguage, config.dependencies);
 	const state = execute(generated, {}) as Global;
+	state.os = "ios"
 	inject({
 		files: config.files,
 		name:"ContentView.swift",
@@ -173,7 +174,7 @@ const getTag = (
     switch(name) {
         case "button": return stdTag(`Button(action : {
 ${toSwift(component.onClick, config.dependencies, `${config.tabs}\t`)}
-${config.tabs}\tstate = global
+${config.tabs}\twithAnimation { state = global }
 ${config.tabs}}, label : {
 ${config.content}
 ${config.tabs}})`)({
@@ -195,7 +196,7 @@ ${config.tabs}.scaledToFit()`;
         case "input": return stdTag(`TextField(\"${component.placeholder || ""}\", text : value${
 	component.onEnter ? `, onEditingChanged : { _ in }, onCommit : {
 ${toSwift(component.onEnter, config.dependencies, `${config.tabs}\t`)}
-${config.tabs}\tstate = global
+${config.tabs}\twithAnimation { state = global }
 ${config.tabs}})` : ")"}`)(config)
         case "root": return stdTag("ZStack")(config)
         case "row": return stdTag(`HStack(alignment: .${getCrossAxisAlignment(component)}, spacing: 0)`)(config)
@@ -206,7 +207,7 @@ ${config.tabs}\ttitle : "${component.placeholder || ""}",
 ${config.tabs}\tcomponent : component,
 ${config.tabs}\tcallback : { event in 
 ${toSwift(component.onChange, config.dependencies, `${config.tabs}\t\t`)}
-${config.tabs}\t\tstate = global
+${config.tabs}\t\twithAnimation { state = global }
 ${config.tabs}\t},
 ${config.tabs}\tcolor : Color(hex : "${transformColor(component.color)}")
 ${config.tabs})${config.props}`;
@@ -330,7 +331,7 @@ ${config.tabs}\t\t\t\t${(await Promise.all(Object.keys(component.adapters).map(a
                 isRoot: true
             })
         })
-        return `if adapter == ${JSON.stringify(key)} { ${instance.id}(state : $state, local : idmap.map) }`
+        return `if adapter == ${JSON.stringify(key)} { ${instance.id}(state : $state, local : idmap.map).transition(getTransition(animation : idmap.map[\"animation\"] as? [String:Any?] ?? [:])).zIndex(index) }`
     }))).join(`\n\t\t\t\t${config.tabs}`)}
 ${config.tabs}\t\t\t}
 ${config.tabs}\t\t}` : ""
@@ -366,7 +367,7 @@ ${config.tabs}\t\t}` : ""
         tabs : config.tabs + "\t",
         dependencies,
         component
-    })
+    }) + ".border(Color.red)"
     if(component.name === "root" || config.isRoot) {
         return `
 struct ${component.id}: View {
@@ -387,17 +388,17 @@ ${observe}
 			return component["value"] as? Bool ?? false
 		}, set : { event in
 ${toSwift(component.onChange, config.dependencies, "\t\t\t")}
-			state = global
+			withAnimation { state = global }
 		})` : ""
 }${
     ["input", "select"].includes(component.name) ? `\n\t\tlet value = Binding<String>(get : {
 			return component["value"] as? String ?? ""
 		}, set : { event in
 ${toSwift(component.onChange, config.dependencies, "\t\t\t")}
-			state = global
+			withAnimation { state = global }
 		})` : ""
 }
-${handlePosition(component, tag, dependencies, config)}.border(Color.red)
+${handlePosition(component, tag, dependencies, config)}
     }
 }`
     }
@@ -549,7 +550,7 @@ ${config.tabs})`;
 			radius ? `\n${config.tabs}${radius}` : ""
 		}${
 			shadow ? `\n${config.tabs}${shadow}` : ""
-		}`; // .border(Color.green)
+		}`;
 	}
 	case "color": {
 		return `.foregroundColor(Color(hex : "${transformColor(component.color)}"))`;
@@ -557,7 +558,7 @@ ${config.tabs})`;
 	case "onInit": {
 		return `.onAppear {
 ${toSwift(component[key], dependencies, config.tabs + "\t")}
-${config.tabs}\tstate = global
+${config.tabs}\twithAnimation { state = global }
 ${config.tabs}}`;
 	}
 	case "funcs": {
@@ -613,9 +614,9 @@ const getMainAxisAlignment = (component : Component<any, any>) : string => {
 			end: "bottom"
 		},
 		column : {
-			start: "leading",
-			center: "center",
-			end: "trailing"
+			start: "topLeading",
+			center: "top",
+			end: "topTrailing"
 		}
 	}[
 		["column", "row"].includes(component.name) ? component.name : "column"

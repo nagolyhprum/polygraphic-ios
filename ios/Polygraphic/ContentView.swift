@@ -41,13 +41,22 @@ struct ContentView: View {
                 if let callback = list[1] as? (Any?) -> Any?, let ms = list[2] as? Double {
                     DispatchQueue.main.asyncAfter(deadline: .now() + (ms / 1000.0)) {
                         callback(nil)
-                        state = global
+                        withAnimation { state = global }
                     }
                 }
                 return nil
             }   
         }
     }
+}
+
+func getTransition(animation : [String:Any?]) -> AnyTransition {
+    if let name = animation["name"] as? String {
+        if name == "right" {
+            return AnyTransition.move(edge: .trailing)
+        }
+    }
+    return AnyTransition.identity
 }
 
 extension View {

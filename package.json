@@ -31,7 +31,7 @@
   "homepage": "https://github.com/nagolyhprum/polygraphic-ios#readme",
   "dependencies": {
     "parcel": "^2.4.0",
-    "polygraphic": "^0.70.1",
+    "polygraphic": "^0.72.0",
     "yargs": "^17.4.0"
   },
   "devDependencies": {
