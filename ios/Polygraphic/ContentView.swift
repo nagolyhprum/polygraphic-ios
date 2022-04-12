@@ -46,7 +46,7 @@ struct ContentView: View {
                 }
                 return nil
             }   
-            global["os"] = "ios"
+            global = set(root: global, path: ["os"], value: "ios")
             state = global
         }
     }
