@@ -46,6 +46,8 @@ struct ContentView: View {
                 }
                 return nil
             }   
+            global["os"] = "ios"
+            state = global
         }
     }
 }

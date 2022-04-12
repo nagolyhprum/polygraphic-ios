@@ -104,7 +104,7 @@ export const ios = <Global extends GlobalState>(
 	inject({
 		files: config.files,
 		name:"ContentView.swift",
-		content:`var global : Any? = ${toSwift([() => generated], config.dependencies, "")}; global["os"] = "ios"`,
+		content:`var global : Any? = ${toSwift([() => generated], config.dependencies, "")}`,
 		template: "views"
 	})
     const root = app({
