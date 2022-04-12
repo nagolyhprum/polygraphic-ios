@@ -438,6 +438,8 @@ const handleDependencies = (
 ): string => {
 	return Array.from(dependencies).map(dependency => {
 		switch(dependency) {
+		case "event.animation":
+			return ".transition(getTransition(animation : component[\"animation\"] as? [String:Any?] ?? [:]))";
 		case "event.disabled":
 			return ".disabled(hasValue(input : component[\"disabled\"]))";
 		case "event.visible":

@@ -55,10 +55,13 @@ struct ContentView: View {
 func getTransition(animation : [String:Any?]) -> AnyTransition {
     if let name = animation["name"] as? String {
         if name == "right" {
-            return AnyTransition.move(edge: .trailing)
+            return .move(edge: .trailing)
+        }
+        if name == "left" {
+            return .move(edge: .leading)
         }
     }
-    return AnyTransition.identity
+    return .identity
 }
 
 extension View {
