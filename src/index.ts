@@ -100,14 +100,13 @@ export const ios = <Global extends GlobalState>(
 	};
 	const generated = compile(generateState as unknown as (config : any) => ProgrammingLanguage, config.dependencies);
 	const state = execute(generated, {}) as Global;
-	state.os = "ios"
+	state.features = [];
 	inject({
 		files: config.files,
 		name:"ContentView.swift",
-		content:`var global : Any? = ${toSwift([() => generated], config.dependencies, "")}`,
+		content:`var global : Any? = ${toSwift([() => generated], config.dependencies, "")}; global["os"] = "ios"`,
 		template: "views"
 	})
-	state.features = [];
     const root = app({
         global : state,
         local : state,
