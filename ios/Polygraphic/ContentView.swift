@@ -96,6 +96,99 @@ func getIdentifier(input : [String : Any?]?) -> String {
     return (input?["key"] ?? input?["id"] ?? input?["value"]) as? String ?? ""
 }
 
+func getDateString(component : [String:Any?]) -> String {
+    if let value = component["value"] as? Double {
+        if value == -1 {
+            return ""
+        }
+        let date = Date(timeIntervalSince1970: value / 1000)
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "MM-dd-YYYY"
+        return dateFormatter.string(from: date)
+    }
+    return ""
+}
+
+func getDate(component : [String:Any?]) -> Date {
+    if let value = component["value"] as? Double {
+        if value == -1 {
+            return Date()
+        } else {
+            return Date(timeIntervalSince1970: value / 1000)
+        }
+    }
+    return Date()
+}
+
+struct PollyDatePicker: View {
+    
+    let title: String
+    let component : [String : Any?]
+    let callback: (Double) -> ()
+    @State var popup = false
+    
+    init(
+        title: String,
+        component : [String : Any?],
+        callback : @escaping (Double) -> ()
+    ) {
+        self.title = title
+        self.component = component
+        self.callback = callback
+    }
+    
+    var body: some View {
+        var _datePickerValue = getDate(component: component)
+        var datePickerValue = Binding<Date>(get: {
+            return _datePickerValue
+        }, set: { date in
+            _datePickerValue = date
+        })
+        Button(action : {
+            if !isReady() { return }
+            popup = true
+        }) {
+            HStack {
+                Text(getDateString(component : component))
+                .frame(maxWidth : .infinity, alignment: .leading)
+            }
+        }.sheet(isPresented: self.$popup) {
+            VStack {
+                DatePicker(title, selection: datePickerValue, displayedComponents: .date)
+                    .datePickerStyle(GraphicalDatePickerStyle())
+                HStack {
+                    Button(action : {
+                        callback(Double(-1))
+                        popup = false
+                    }) {
+                        Text("CLEAR")
+                    }
+                    Spacer().frame(
+                        maxWidth : .infinity
+                    )
+                    Button(action : {
+                        popup = false
+                    }) {
+                        Text("CANCEL")
+                    }
+                    Button(action : {
+                        callback(Double(_datePickerValue.timeIntervalSince1970 * 1000))
+                        popup = false
+                    }) {
+                        Text("OK")
+                    }.padding(.leading)
+                }
+            }
+            .padding(.all)
+            .padding(.all)
+            .frame(
+                maxWidth : .infinity,
+                maxHeight: .infinity
+            )
+        }
+    }
+}
+
 struct Picker: View {
     
     let title: String

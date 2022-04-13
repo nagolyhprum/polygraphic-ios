@@ -182,7 +182,15 @@ ${config.tabs}})`)({
         })
         case "checkbox": return stdTag(`CheckboxField(checked : value)`)(config)
         case "column": return stdTag(`VStack(alignment: .${getCrossAxisAlignment(component)}, spacing: 0)`)(config)
-        case "date": return stdTag("ZStack")(config)
+        case "date": 
+			return `${config.tabs}PollyDatePicker(
+${config.tabs}\ttitle : "${component.placeholder || ""}",
+${config.tabs}\tcomponent : component,
+${config.tabs}\tcallback : { event in 
+${toSwift(component.onChange, config.dependencies, `${config.tabs}\t\t`)}
+${config.tabs}\t\twithAnimation { state = global }
+${config.tabs}\t})${config.props}`;
+		
         case "image": {
 			const {src} = component;
 			const observedSrc = config.dependencies.has("event.src") ? "getSource(input : component[\"src\"]) ?? " : "";
