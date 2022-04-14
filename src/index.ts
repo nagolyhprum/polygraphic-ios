@@ -378,7 +378,7 @@ ${config.tabs}\t\t}` : ""
             ...config,
             tabs : config.tabs + "\t"
         }
-    )).filter(_ => _).join(`\n\t${config.tabs}`) + handleDependencies(dependencies, config);
+    )).filter(_ => _).join(`\n\t${config.tabs}`) + handleBoxProps(component, dependencies, config) + handleDependencies(dependencies, config);
     dependencies.forEach(dependency => {
         config.dependencies.add(dependency)
     })
@@ -482,36 +482,6 @@ const getComponentProp = (
 	config: IOSConfig
 ): string => {
 	switch(key) {
-	case "margin": {
-		const margin = component[key];
-		if(margin) {
-			return keys(margin).map(key => {
-				const remap = {
-					top: "top",
-					bottom: "bottom",
-					left: "leading",
-					right: "trailing"
-				}[key];
-				return `.padding(.${remap}, ${margin[key]})`;
-			}).join(`\n${config.tabs}`);
-		}
-		return "";
-	}
-	case "padding": {
-		const padding = component[key];
-		if(padding) {
-			return keys(padding).map(key => {
-				const remap = {
-					top: "top",
-					bottom: "bottom",
-					left: "leading",
-					right: "trailing"
-				}[key];
-				return `.padding(.${remap}, ${padding[key]})`;
-			}).join(`\n${config.tabs}`);
-		}
-		return "";
-	}
 	case "width":
 	case "height":
 	case "grow":
@@ -525,7 +495,7 @@ ${config.tabs}	minWidth : ${observedMinWidth}${getMinSize(component, "width")},
 ${config.tabs}	maxWidth : ${observedMaxWidth}${getMaxSize(component, "width")}, 
 ${config.tabs}	minHeight : ${observedMinHeight}${getMinSize(component, "height")},
 ${config.tabs}	maxHeight : ${observedMaxHeight}${getMaxSize(component, "height")},
-${config.tabs}	alignment : .${getMainAxisAlignment(component)}
+${config.tabs}	alignment : .${getAlignment(component)}
 ${config.tabs})`;
 		}
 		return "";
@@ -555,26 +525,6 @@ ${config.tabs})`;
 	case "opacity": {
 		const observedBackground = dependencies.has("event.opacity") ? "component[\"opacity\"] as? Double ?? " : "";
 		return `.opacity(${observedBackground}${component[key]})`;
-	}
-	case "shadow":
-	case "round":
-	case "background": {
-		if(key !== "background") return "";
-		const width = component.width ?? 0;
-		const height = component.height ?? 0;
-		const round = component.round;
-		const radius = round ? (
-			round === width / 2 && round === height / 2 ? 
-				".clipShape(Circle())" :
-				`.cornerRadius(${round})`
-		) : "";
-		const shadow = component.shadow ? ".shadow(color : Color(hex : \"4d000000\"), radius: 4, x: 4, y: 4)" : "";
-		const observedBackground = dependencies.has("event.background") ? "component[\"background\"] as? String ?? " : "";
-		return `.background(Color(hex : ${observedBackground}"${transformColor(component.background)}"))${
-			radius ? `\n${config.tabs}${radius}` : ""
-		}${
-			shadow ? `\n${config.tabs}${shadow}` : ""
-		}`;
 	}
 	case "color": {
 		return `.foregroundColor(Color(hex : "${transformColor(component.color)}"))`;
@@ -630,25 +580,6 @@ const getMinSize = (component : Component<any, any>, dimension : "width" | "heig
 	return "0";
 };
 
-const getMainAxisAlignment = (component : Component<any, any>) : string => {
-	return {
-		row : {
-			start: "top",
-			center: "center",
-			end: "bottom"
-		},
-		column : {
-			start: "topLeading",
-			center: "top",
-			end: "topTrailing"
-		}
-	}[
-		["column", "row"].includes(component.name) ? component.name : "column"
-	][
-		component.mainAxisAlignment ?? "start" // perpendicular
-	];
-};
-
 const getCrossAxisAlignment = (component : Component<any, any>) : string => {
 	return {
 		row : {
@@ -664,6 +595,127 @@ const getCrossAxisAlignment = (component : Component<any, any>) : string => {
 	}[
 		["column", "row"].includes(component.name) ? component.name : "column"
 	][
-		component.crossAxisAlignment ?? "start" // perpendicular
-	];
+		component.crossAxisAlignment || "start"
+	]
+}
+
+const getAlignment = (component : Component<any, any>) : string => {
+	const alignment : Record<"row" | "column", {
+		start : {
+			start : string
+			center : string
+			end : string
+		}
+		center : {
+			start : string
+			center : string
+			end : string
+		}
+		end : {
+			start : string
+			center : string
+			end : string
+		}
+	}> = {
+		row : {
+			// left to right
+			start: {
+				// top to bottom
+				start : "topLeading",
+				center : "leading",
+				end : "bottomLeading"
+			},
+			center: {
+				start : "top",
+				center : "center",
+				end : "bottom"
+			},
+			end: {
+				start : "topTrailing",
+				center : "trailing",
+				end : "bottomTrailing"
+			}
+		},
+		column : {
+			// top to bottom
+			start: {
+				// left to right
+				start : "topLeading",
+				center : "top",
+				end : "topTrailing"
+			},
+			center: {
+				start : "leading",
+				center : "center",
+				end : "trailing"
+			},
+			end: {
+				start : "bottomLeading",
+				center : "bottom",
+				end : "bottomTrailing"
+			}
+		}
+	} as const
+	const name = component.name
+	const direction = alignment[["column", "row"].includes(name) ? name : "column"]
+	const main = direction[component.mainAxisAlignment ?? "start"]
+	const cross = main[component.crossAxisAlignment ?? "start"]
+	return cross
 };
+
+const handleBoxProps = (component : Component<any, any>, dependencies : Set<string>, config : IOSConfig) => {
+	return ["padding", "background", "margin"].map(key => {
+		if(!component[key]) {
+			return "";
+		}
+		switch(key) {
+			case "padding": {
+				const padding = component[key];
+				if(padding) {
+					return keys(padding).map(key => {
+						const remap = {
+							top: "top",
+							bottom: "bottom",
+							left: "leading",
+							right: "trailing"
+						}[key];
+						return `.padding(.${remap}, ${padding[key]})`;
+					}).join(`\n${config.tabs}`);
+				}
+				return "";
+			}
+			case "margin": {
+				const margin = component[key];
+				if(margin) {
+					return keys(margin).map(key => {
+						const remap = {
+							top: "top",
+							bottom: "bottom",
+							left: "leading",
+							right: "trailing"
+						}[key];
+						return `.padding(.${remap}, ${margin[key]})`;
+					}).join(`\n${config.tabs}`);
+				}
+				return "";
+			}
+			case "background": {
+				const width = component.width ?? 0;
+				const height = component.height ?? 0;
+				const round = component.round;
+				const radius = round ? (
+					round === width / 2 && round === height / 2 ? 
+						".clipShape(Circle())" :
+						`.cornerRadius(${round})`
+				) : "";
+				const shadow = component.shadow ? ".shadow(color : Color(hex : \"4d000000\"), radius: 4, x: 4, y: 4)" : "";
+				const observedBackground = dependencies.has("event.background") ? "component[\"background\"] as? String ?? " : "";
+				return `.background(Color(hex : ${observedBackground}"${transformColor(component.background)}"))${
+					radius ? `\n${config.tabs}${radius}` : ""
+				}${
+					shadow ? `\n${config.tabs}${shadow}` : ""
+				}`;
+			}
+		}
+	}).filter(_ => _).join(`\n\t${config.tabs}`)
+}
