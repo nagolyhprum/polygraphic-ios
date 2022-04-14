@@ -277,6 +277,16 @@ const toSwift = (
     }).join("\n")
 }
 
+const getTransition = (component : Component<any, any>) => {
+	if(component.id === "screen") {
+		return ".move(edge : .trailing)"
+	}
+	if(component.id === "modal") {
+		return ".opacity"
+	}
+	return `getTransition(animation : idmap.map[\"animation\"] as? [String:Any?] ?? [:])`
+}
+
 const render = async <Global extends GlobalState>(
     component : Component<Global, Global>, 
     global : any,
@@ -288,7 +298,7 @@ const render = async <Global extends GlobalState>(
 	}
     const dependencies = new Set<string>([])
     const children = (await Promise.all((component.children || []).map(async child => {
-        if(child.id) {
+        if(child.id && !["screen", "modal"].includes(child.id)) {
             inject({
                 template: "views",
                 files : config.files,
@@ -328,17 +338,21 @@ ${config.tabs}\t\t\t\t${(await Promise.all(Object.keys(component.adapters).map(a
                 name : "root"
             }
         })
+		const child = (instance.children ?? [])[0]
         inject({
             template: "views",
             files : config.files,
             name : "ContentView.swift",
-            content : await render(instance, global, local, {
+            content : await render({
+				...child,
+				id: instance.id
+			}, global, local, {
                 ...config,
                 tabs : "\t\t",
                 isRoot: true
             })
         })
-        return `if adapter == ${JSON.stringify(key)} { ${instance.id}(state : $state, local : idmap.map).transition(getTransition(animation : idmap.map[\"animation\"] as? [String:Any?] ?? [:])).zIndex(index) }`
+        return `if adapter == ${JSON.stringify(key)} { ${instance.id}(state : $state, local : idmap.map).transition(${getTransition(child)}).zIndex(index) }`
     }))).join(`\n\t\t\t\t${config.tabs}`)}
 ${config.tabs}\t\t\t}
 ${config.tabs}\t\t}` : ""

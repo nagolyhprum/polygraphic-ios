@@ -11,6 +11,91 @@ func isReady() -> Bool {
     return false
 }
 
+extension Date {
+    var startOfHour: Date {
+        let calendar = Calendar(identifier: .gregorian)
+        let components = calendar.dateComponents([.year, .month, .day, .hour], from: self)
+        return  calendar.date(from: components)!
+    }
+    
+    var startOfDay: Date {
+        let calendar = Calendar(identifier: .gregorian)
+        let components = calendar.dateComponents([.year, .month, .day], from: self)
+        return  calendar.date(from: components)!
+    }
+    
+    var startOfMonth: Date {
+        let calendar = Calendar(identifier: .gregorian)
+        let components = calendar.dateComponents([.year, .month], from: self)
+        return  calendar.date(from: components)!
+    }
+    
+    var startOfYear: Date {
+        let calendar = Calendar(identifier: .gregorian)
+        let components = calendar.dateComponents([.year], from: self)
+        return  calendar.date(from: components)!
+    }
+}
+
+func startOf(ms : Double, unit : String) -> [String : (_ any : [Any?]) -> Any?] {
+    let date = Date(timeIntervalSince1970: Double(ms / 1000))
+    if unit == "year" {
+        return PollyMoment(ms : date.startOfYear.timeIntervalSince1970)
+    }
+    if unit == "month" {
+        return PollyMoment(ms : date.startOfMonth.timeIntervalSince1970)
+    }
+    if unit == "day" {
+        return PollyMoment(ms : date.startOfDay.timeIntervalSince1970)
+    }
+    if unit == "hour" {
+        return PollyMoment(ms : date.startOfHour.timeIntervalSince1970)
+    }
+    return PollyMoment(ms : ms)
+}
+
+func PollyMoment(ms : Double) -> [String : (_ any : [Any?]) -> Any?] {
+    return [
+        "startOf" : { any in
+            if let unit = any[0] as? String {
+                return startOf(ms : ms, unit : unit)
+            }
+            return PollyMoment(ms : ms)
+        },
+        "isSame" : { any in
+            if let input = any[0] as? Double, let unit = any[1] as? String {
+                let a = startOf(ms: ms, unit: "day")
+                let b = startOf(ms: ms, unit: "day")
+                return invoke(
+                    target : a,
+                    name : "valueOf",
+                    args : []
+                ) as? Double == invoke(
+                    target : b,
+                    name : "valueOf",
+                    args : []
+                ) as? Double
+            }
+            return PollyMoment(ms : ms)
+        },
+        "valueOf" : { any in
+            return ms
+        },
+        "format" : { any in
+            if let format = any[0] as? String {
+                let reformat = format.replacingOccurrences(of: "ddd", with: "EEE")
+                    .replacingOccurrences(of: "D", with: "d")
+                    .replacingOccurrences(of: "Y", with: "y")
+                let dateFormatterPrint = DateFormatter()
+                dateFormatterPrint.dateFormat = reformat
+                let date = Date(timeIntervalSince1970: ms / Double(1000))
+                return dateFormatterPrint.string(from: date)
+            }
+            return ""
+        }
+    ]
+}
+
 struct CheckboxField: View {
     @Binding var checked : Bool
     
@@ -46,6 +131,12 @@ struct ContentView: View {
                 }
                 return nil
             }   
+            ProgrammingGlobal["moment"] = { any in
+                if let ms = any[1] as? Double {
+                    return PollyMoment(ms : ms)
+                }
+                return nil
+            }
             global = set(root: global, path: ["os"], value: "ios")
             state = global
         }
