@@ -21,7 +21,8 @@ const keys = <T>(input: T): Array<keyof T> => Object.keys(input) as Array<keyof 
 const colorMap: Record<string, string> = {
 	white: "#ffffff",
 	black: "#000000",
-	gray: "#808080"
+	gray: "#808080",
+	purple: "#6a0dad"
 };
 
 export const transformColor = (input: string | undefined) => {
