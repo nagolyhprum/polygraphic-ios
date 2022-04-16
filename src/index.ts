@@ -101,7 +101,7 @@ export const ios = <Global extends GlobalState>(
 	};
 	const generated = compile(generateState as unknown as (config : any) => ProgrammingLanguage, config.dependencies);
 	const state = execute(generated, {}) as Global;
-	state.features = [];
+	state.features = ["speech.listen"];
 	inject({
 		files: config.files,
 		name:"ContentView.swift",
@@ -137,7 +137,7 @@ export const ios = <Global extends GlobalState>(
         template: "views",
         files : config.files,
         name : "ContentView.swift",
-        content : await render(root, global, global, {
+        content : await render(root, state, state, {
             ...config,
             isRoot: true
         })

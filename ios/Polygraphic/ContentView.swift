@@ -1,4 +1,140 @@
 import SwiftUI
+import Speech
+
+struct SpeechRecognizer {
+    private class SpeechAssist {
+        var audioEngine: AVAudioEngine?
+        var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
+        var recognitionTask: SFSpeechRecognitionTask?
+        let speechRecognizer = SFSpeechRecognizer()
+
+        deinit {
+            reset()
+        }
+
+        func reset() {
+            recognitionTask?.cancel()
+            audioEngine?.stop()
+            audioEngine = nil
+            recognitionRequest = nil
+            recognitionTask = nil
+        }
+    }
+
+    private var timer : Timer?
+    private let assistant = SpeechAssist()
+    private var callback: (String) -> () = { transcript in }
+    private var transcript = ""
+
+    mutating func record(callback : @escaping (String) -> ()) {
+        var this = self
+        this.callback = callback
+        this.transcript = ""
+        // print("Requesting access")
+        canAccess { assistant, authorized in
+            guard authorized else {
+                // print("Access denied")
+                return
+            }
+            // print("Access granted")
+            assistant.audioEngine = AVAudioEngine()
+            guard let audioEngine = assistant.audioEngine else {
+                // print("Unable to create audio engine")
+                return
+            }
+            assistant.recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
+            guard let recognitionRequest = assistant.recognitionRequest else {
+                // print("Unable to create request")
+                return
+            }
+            recognitionRequest.shouldReportPartialResults = true
+            do {
+                // print("Booting audio subsystem")
+                let inputNode = audioEngine.inputNode
+                // print("Found input node")
+                let recordingFormat = inputNode.outputFormat(forBus: 0)
+                inputNode.installTap(
+                    onBus: 0,
+                    bufferSize: 1024,
+                    format: recordingFormat
+                ) { buffer, when in
+                    recognitionRequest.append(buffer)
+                }
+                // print("Preparing audio engine")
+                audioEngine.prepare()
+                try audioEngine.start()
+                assistant.recognitionTask = assistant.speechRecognizer?.recognitionTask(with: recognitionRequest) { (result, error) in
+                    if let result = result {
+                        this.transcript = result.bestTranscription.formattedString
+                        this.resetTimer()
+                    }
+                }
+                this.resetTimer()
+                AudioServicesPlayAlertSound(1110) // JBL_Begin
+            } catch {
+                // print("Error transcibing audio : \(error.localizedDescription)")
+                assistant.reset()
+            }
+        }
+    }
+
+    mutating func resetTimer() {
+        let this = self
+        timer?.invalidate()
+        // print("new timer")
+        timer = Timer.scheduledTimer(
+            withTimeInterval: 1,
+            repeats: false,
+            block: { (timer) in
+                // print("timed out")
+                this.stopRecording()
+            }
+        )
+    }
+
+    func stopRecording() {
+        AudioServicesPlayAlertSound(1111) // JBL_End
+        callback(transcript)
+        assistant.reset()
+    }
+
+    private func canAccess(withHandler handler: @escaping (SpeechAssist, Bool) -> Void) {
+        SFSpeechRecognizer.requestAuthorization { status in
+            if status == .authorized {
+                AVAudioSession.sharedInstance().requestRecordPermission { authorized in
+                    handler(assistant, authorized)
+                }
+            } else {
+                handler(assistant, false)
+            }
+        }
+    }
+}
+
+var speechRecognizer = SpeechRecognizer()
+func PollySpeechRecognition(
+    callback : () -> Void
+) -> [String : (_ any : [Any?]) -> Any?] {
+    return [
+        "start" : { any in
+            if let config = any[0] as? [String : Any?] {
+                if let onResult = config["onResult"] as? (Any?) -> Any? {
+                    speechRecognizer.record { transcript in
+                        callback()
+                        let global = onResult([
+                            "results" : [[[
+                                "transcript" : transcript,
+                                "confidence" : -1
+                            ]]]
+                        ])
+                        state.update(global : global)
+                    }
+                }
+            }
+            return nil
+        }
+    ]
+}
 
 var last_update = Double(0)
 func isReady() -> Bool {
