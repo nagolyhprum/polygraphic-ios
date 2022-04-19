@@ -99,13 +99,22 @@ export const ios = <Global extends GlobalState>(
 			};
 		}, Promise.resolve({}))
 	};
+	inject({
+		content: `<key>NSMicrophoneUsageDescription</key>
+<string>Create tasks using your voice</string>
+<key>NSSpeechRecognitionUsageDescription</key>
+<string>Create tasks using your voice</string>`,
+		files: config.files,
+		name: "Info.plist",
+		template: ""
+	})
 	const generated = compile(generateState as unknown as (config : any) => ProgrammingLanguage, config.dependencies);
 	const state = execute(generated, {}) as Global;
 	state.features = ["speech.listen"];
 	inject({
 		files: config.files,
 		name:"ContentView.swift",
-		content:`var global : Any? = ${toSwift([() => generated], config.dependencies, "")}`,
+		content:`var global : Any? = UserDefaults.standard.object(forKey : "State") as? [String : Any?] ?? ${toSwift([() => generated], config.dependencies, "")}`,
 		template: "views"
 	})
     const root = app({
@@ -122,7 +131,9 @@ export const ios = <Global extends GlobalState>(
     inject({
         files : config.files,
         name : "ContentView.swift",
-        content : `\t\t\tmain(state : $state, local : state)`,
+        content : `\t\t\tmain(state : $state.onUpdate {
+				save()
+			}, local : state)`,
         template : "main"
     })
 

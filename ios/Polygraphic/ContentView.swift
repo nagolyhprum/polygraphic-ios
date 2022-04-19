@@ -112,29 +112,7 @@ struct SpeechRecognizer {
 }
 
 var speechRecognizer = SpeechRecognizer()
-func PollySpeechRecognition(
-    callback : () -> Void
-) -> [String : (_ any : [Any?]) -> Any?] {
-    return [
-        "start" : { any in
-            if let config = any[0] as? [String : Any?] {
-                if let onResult = config["onResult"] as? (Any?) -> Any? {
-                    speechRecognizer.record { transcript in
-                        callback()
-                        let global = onResult([
-                            "results" : [[[
-                                "transcript" : transcript,
-                                "confidence" : -1
-                            ]]]
-                        ])
-                        state.update(global : global)
-                    }
-                }
-            }
-            return nil
-        }
-    ]
-}
+var speech: [String : (_ any : [Any?]) -> Any?] = [:]
 
 var last_update = Double(0)
 func isReady() -> Bool {
@@ -249,6 +227,9 @@ struct ContentView: View {
     init() {
         /*=funcs*/
     }
+    func save() {
+        UserDefaults.standard.set(global, forKey : "State")
+    }
     @State var state = global
     var body: some View {
         ZStack {
@@ -262,7 +243,10 @@ struct ContentView: View {
                 if let callback = list[1] as? (Any?) -> Any?, let ms = list[2] as? Double {
                     DispatchQueue.main.asyncAfter(deadline: .now() + (ms / 1000.0)) {
                         callback(nil)
-                        withAnimation { state = global }
+                        withAnimation {
+                            state = global 
+                            save()
+                        }
                     }
                 }
                 return nil
@@ -273,8 +257,31 @@ struct ContentView: View {
                 }
                 return nil
             }
-            global = set(root: global, path: ["os"], value: "ios")
-            state = global
+            speech["listen"] = { any in
+                if let config = any[0] as? [String : Any?] {
+                    if let onResult = config["onResult"] as? (Any?) -> Any? {
+                        speechRecognizer.record { transcript in
+                            onResult([
+                                "results" : [[[
+                                    "isFinal" : true,
+                                    "transcript" : transcript,
+                                    "confidence" : -1
+                                ]]]
+                            ])
+                            withAnimation {
+                                state = global
+                                save()
+                            }
+                        }
+                    }
+                }
+                return nil
+            }
+            global = set(root: global, path : ["os"], value: "ios")
+            withAnimation {
+                state = global
+                save()
+            }
         }
     }
 }
@@ -582,5 +589,16 @@ extension Color {
             blue:  Double(b) / 255,
             opacity: Double(a) / 255
         )
+    }
+}
+
+extension Binding {
+    func onUpdate(_ closure: @escaping () -> Void) -> Binding<Value> {
+        Binding(get: {
+            wrappedValue
+        }, set: { newValue in
+            wrappedValue = newValue
+            closure()
+        })
     }
 }
