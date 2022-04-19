@@ -1,3 +1,4 @@
+import { createCanvas, loadImage } from 'canvas'
 import fs from 'fs/promises'
 import path from 'path'
 import {
@@ -106,7 +107,7 @@ export const ios = <Global extends GlobalState>(
 <string>Create tasks using your voice</string>`,
 		files: config.files,
 		name: "Info.plist",
-		template: ""
+		template: "manifest"
 	})
 	const generated = compile(generateState as unknown as (config : any) => ProgrammingLanguage, config.dependencies);
 	const state = execute(generated, {}) as Global;
@@ -381,7 +382,7 @@ ${config.tabs}\t\t}` : ""
 		})
 	}
     const observe = toSwift(component.observe, dependencies, "\t\t")
-    const props = keys(component).map(key => getComponentProp(
+    const props = (await Promise.all(keys(component).map(key => getComponentProp(
         component,
         key,
         dependencies,
@@ -389,7 +390,7 @@ ${config.tabs}\t\t}` : ""
             ...config,
             tabs : config.tabs + "\t"
         }
-    )).filter(_ => _).join(`\n\t${config.tabs}`) + handleBoxProps(component, dependencies, config) + handleDependencies(dependencies, config);
+    )))).filter(_ => _).join(`\n\t${config.tabs}`) + handleBoxProps(component, dependencies, config) + handleDependencies(dependencies, config);
     dependencies.forEach(dependency => {
         config.dependencies.add(dependency)
     })
@@ -486,13 +487,162 @@ const handleDependencies = (
 };
 
 
-const getComponentProp = (
+const getComponentProp = async (
 	component: Component<any, any>,
 	key: string,
     dependencies : Set<string>,
 	config: IOSConfig
-): string => {
+): Promise<string> => {
 	switch(key) {
+	case "manifest": {
+		const manifest = component[key]
+		const contents = {
+			"images" : [
+				{
+					"idiom" : "iphone",
+					"scale" : "2x",
+					"size" : "20x20"
+				},
+				{
+					"idiom" : "iphone",
+					"scale" : "3x",
+					"size" : "20x20"
+				},
+				{
+					"idiom" : "iphone",
+					"scale" : "2x",
+					"size" : "29x29"
+				},
+				{
+					"idiom" : "iphone",
+					"scale" : "3x",
+					"size" : "29x29"
+				},
+				{
+					"idiom" : "iphone",
+					"scale" : "2x",
+					"size" : "40x40"
+				},
+				{
+					"idiom" : "iphone",
+					"scale" : "3x",
+					"size" : "40x40"
+				},
+				{
+					"idiom" : "iphone",
+					"scale" : "2x",
+					"size" : "60x60"
+				},
+				{
+					"idiom" : "iphone",
+					"scale" : "3x",
+					"size" : "60x60"
+				},
+				{
+					"idiom" : "ipad",
+					"scale" : "1x",
+					"size" : "20x20"
+				},
+				{
+					"idiom" : "ipad",
+					"scale" : "2x",
+					"size" : "20x20"
+				},
+				{
+					"idiom" : "ipad",
+					"scale" : "1x",
+					"size" : "29x29"
+				},
+				{
+					"idiom" : "ipad",
+					"scale" : "2x",
+					"size" : "29x29"
+				},
+				{
+					"idiom" : "ipad",
+					"scale" : "1x",
+					"size" : "40x40"
+				},
+				{
+					"idiom" : "ipad",
+					"scale" : "2x",
+					"size" : "40x40"
+				},
+				{
+					"idiom" : "ipad",
+					"scale" : "1x",
+					"size" : "76x76"
+				},
+				{
+					"idiom" : "ipad",
+					"scale" : "2x",
+					"size" : "76x76"
+				},
+				{
+					"idiom" : "ipad",
+					"scale" : "2x",
+					"size" : "83.5x83.5"
+				},
+				{
+					"idiom" : "ios-marketing",
+					"scale" : "1x",
+					"size" : "1024x1024"
+				}
+			],
+			"info" : {
+				"author" : "xcode",
+				"version" : 1
+			}
+		}
+		config.files[path.join("ios", "Polygraphic", "Assets.xcassets", "AppIcon.appiconset", "Contents.json")] = JSON.stringify({
+			...contents,
+			images: contents.images.map(info => {
+				const size = parseFloat(info.size);
+				const scale = parseFloat(info.scale);
+				return {
+					...info,
+					filename: `icon-${size}-${scale}.png`, 
+				};
+			})
+		})
+		const percent = manifest.icons.percent
+		await Promise.all(contents.images.map(async (info) => {			
+			const size = parseFloat(info.size);
+			const scale = parseFloat(info.scale);
+			const calculated = size * scale
+			const name = `icon-${size}-${scale}.png`;
+			const icon = manifest.icons.src.slice(7);
+			const background = manifest.theme_color;
+			await handleImage(icon, config)
+			const canvas = createCanvas(calculated, calculated)
+			const context = canvas.getContext("2d")
+			const image = await loadImage(icon)
+			image.width = calculated * percent
+			image.height = calculated * percent
+			context.fillStyle = background
+			context.fillRect(0, 0, calculated, calculated)
+			context.drawImage(
+				image, 
+				calculated / 2 - calculated * percent / 2, 
+				calculated / 2 - calculated * percent / 2, 
+				calculated * percent, 
+				calculated * percent
+			)
+			config.files[path.join("ios", "Polygraphic", "Assets.xcassets", "AppIcon.appiconset", name)] = canvas.toBuffer("image/png")
+		}))
+		inject({
+			files: config.files,
+			name: "Info.plist",
+			template: "manifest",
+			content: `<key>CFBundleDisplayName</key>
+<string>${manifest.short_name}</string>
+<key>CFBundleShortVersionString</key>
+<string>${manifest.version.name}</string>
+<key>CFBundleVersion</key>
+<string>${manifest.version.code}</string>`
+		})
+		return ""
+	}
 	case "width":
 	case "height":
 	case "grow":
