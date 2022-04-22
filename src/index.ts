@@ -630,6 +630,10 @@ const getComponentProp = async (
 			)
 			config.files[path.join("ios", "Polygraphic", "Assets.xcassets", "AppIcon.appiconset", name)] = canvas.toBuffer("image/png")
 		}))
+
+		const project = config.files["ios/Polygraphic.xcodeproj/project.pbxproj"].toString("utf-8")
+		config.files["ios/Polygraphic.xcodeproj/project.pbxproj"] = project.replace(/PRODUCT_BUNDLE_IDENTIFIER = com\.polygraphic\.Polygraphic;/g, `PRODUCT_BUNDLE_IDENTIFIER = ${manifest.package.ios};`)
+
 		inject({
 			files: config.files,
 			name: "Info.plist",
@@ -639,7 +643,9 @@ const getComponentProp = async (
 <key>CFBundleShortVersionString</key>
 <string>${manifest.version.name}</string>
 <key>CFBundleVersion</key>
-<string>${manifest.version.code}</string>`
+<string>${manifest.version.code}</string>
+<key>CFBundleIdentifier</key>
+<string>${manifest.package.ios}</string>`
 		})
 		return ""
 	}

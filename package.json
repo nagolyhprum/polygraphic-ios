@@ -16,7 +16,6 @@
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "node bin/polygraphic-ios.js build ../polygraphic-demo/src/todo/index.ts -o dist/ios",
     "prepublishOnly": "parcel build"
   },
   "repository": {
